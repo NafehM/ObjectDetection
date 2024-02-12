@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.navigation.fragment.findNavController
 import com.nmm.objectdetectionapp.databinding.FragmentHomeBinding
 
 // TODO: Rename parameter arguments, choose names that match
@@ -44,13 +45,22 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupNavigation()
+        onDestroyView()
+    }
 
+    private fun setupNavigation() {
+        binding.cameraBtn.setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_cameraFragment)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
+
 
     companion object {
         /**
