@@ -58,13 +58,20 @@ dependencies {
 
     // CameraX core library
     val cameraxVersion = "1.3.1"
-//    val cameraxVersion = "1.2.2"
     implementation("androidx.camera:camera-core:${cameraxVersion}")
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")
     implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
     implementation("androidx.camera:camera-view:${cameraxVersion}")
     implementation( "androidx.camera:camera-extensions:${cameraxVersion}")
+
     // Using CameraX for video recording needs the following dependency
 //     implementation( "androidx.camera:camera-video:${cameraxVersion}")
+
+    // TensorFlow Lite
+    implementation("org.tensorflow:tensorflow-lite:2.4.0")
+    // TensorFlow Lite GPU (optional for faster processing)
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.4.0")
+    // TensorFlow Lite support library
+    implementation("org.tensorflow:tensorflow-lite-support:0.1.0")
 
 }
