@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.nmm.objectdetectionapp.databinding.FragmentCameraBinding
 
-//New
 import android.content.ContentValues
 import android.os.Build
 import android.provider.MediaStore
@@ -30,16 +29,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
-import androidx.camera.video.FallbackStrategy
-import androidx.camera.video.MediaStoreOutputOptions
-import androidx.camera.video.Quality
-import androidx.camera.video.QualitySelector
-import androidx.camera.video.VideoRecordEvent
-import androidx.core.content.PermissionChecker
+//import androidx.camera.video.FallbackStrategy
+//import androidx.camera.video.MediaStoreOutputOptions
+//import androidx.camera.video.Quality
+//import androidx.camera.video.QualitySelector
+//import androidx.camera.video.VideoRecordEvent
+//import androidx.core.content.PermissionChecker
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.Locale
-//end New
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -60,8 +58,8 @@ class CameraFragment : Fragment() {
     private var _binding: FragmentCameraBinding? = null
     private val binding get() = _binding!!
 
-    private var imageCapture: ImageCapture? = null //New
-    private lateinit var cameraExecutor: ExecutorService //New
+    private var imageCapture: ImageCapture? = null
+    private lateinit var cameraExecutor: ExecutorService
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,12 +85,12 @@ class CameraFragment : Fragment() {
             startCamera()
         } else {
 //            ActivityCompat.requestPermissions(requireActivity(), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
-            requestPermissions() //New
+            requestPermissions()
         }
         // Set up the listeners for take photo and video capture buttons
-        binding.captureBtn.setOnClickListener { takePhoto() } //New
+        binding.captureBtn.setOnClickListener { takePhoto() }
 
-        cameraExecutor = Executors.newSingleThreadExecutor() //New
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
     }
 
@@ -109,6 +107,14 @@ class CameraFragment : Fragment() {
             }
 
             imageCapture = ImageCapture.Builder().build()//New
+            //Instantiating an instance of LuminosityAnalyzer in the ImageAnalysis
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .build()
+                .also {
+                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
+                        Log.d(TAG, "Average luminosity: $luma")
+                    })
+                }
 
             // Select back camera as a default camera
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -116,7 +122,8 @@ class CameraFragment : Fragment() {
             try {
                 cameraProvider.unbindAll() // Unbind use cases before rebinding
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+                cameraProvider.bindToLifecycle(this, cameraSelector,
+                    preview, imageCapture, imageAnalyzer)
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -147,8 +154,8 @@ class CameraFragment : Fragment() {
                 contentValues)
             .build()
 
-        // Set up image capture listener, which is triggered after photo has
-        // been taken
+        // Set up image capture listener, which is triggered
+        // after photo has been taken
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(requireContext()),
@@ -165,15 +172,11 @@ class CameraFragment : Fragment() {
                 }
             }
         )
-
-
     }
 
-    //New
     private fun requestPermissions() {
         activityResultLauncher.launch(REQUIRED_PERMISSIONS)
     }
-    //
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
@@ -198,7 +201,7 @@ class CameraFragment : Fragment() {
             // Handle Permission granted/rejected
             var permissionGranted = true
             permissions.entries.forEach {
-                if (it.key in REQUIRED_PERMISSIONS && it.value == false)
+                if (it.key in REQUIRED_PERMISSIONS && !it.value)
                     permissionGranted = false
             }
             if (!permissionGranted) {
@@ -248,4 +251,27 @@ class CameraFragment : Fragment() {
         private const val TAG = "ObjectDetectionApp"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS" //New
     }
+
+    private class LuminosityAnalyzer(private val listener: LumaListener) : ImageAnalysis.Analyzer {
+
+        private fun ByteBuffer.toByteArray(): ByteArray {
+            rewind()    // Rewind the buffer to zero
+            val data = ByteArray(remaining())
+            get(data)   // Copy the buffer into a byte array
+            return data // Return the byte array
+        }
+
+        override fun analyze(image: ImageProxy) {
+
+            val buffer = image.planes[0].buffer
+            val data = buffer.toByteArray()
+            val pixels = data.map { it.toInt() and 0xFF }
+            val luma = pixels.average()
+
+            listener(luma)
+
+            image.close()
+        }
+    }
 }
+
