@@ -11,7 +11,7 @@ import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.app.ActivityCompat
+//import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.nmm.objectdetectionapp.databinding.FragmentCameraBinding
@@ -20,12 +20,10 @@ import com.nmm.objectdetectionapp.databinding.FragmentCameraBinding
 import android.content.ContentValues
 import android.os.Build
 import android.provider.MediaStore
-import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.ImageCapture
-import androidx.camera.video.Recorder
-import androidx.camera.video.Recording
-import androidx.camera.video.VideoCapture
-//import com.android.example.cameraxapp.databinding.ActivityMainBinding
+//import androidx.camera.video.Recorder
+//import androidx.camera.video.Recording
+//import androidx.camera.video.VideoCapture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import androidx.activity.result.contract.ActivityResultContracts
