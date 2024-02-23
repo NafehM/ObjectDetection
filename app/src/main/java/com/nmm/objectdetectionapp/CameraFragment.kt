@@ -44,7 +44,9 @@ import java.util.Locale
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
 
-typealias LumaListener = (luma: Double) -> Unit //new
+
+
+typealias LumaListener = (luma: Double) -> Unit
 /**
  * A simple [Fragment] subclass.
  * Use the [CameraFragment.newInstance] factory method to
