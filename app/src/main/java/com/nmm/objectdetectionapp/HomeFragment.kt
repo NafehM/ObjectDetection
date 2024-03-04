@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import com.nmm.objectdetectionapp.databinding.FragmentHomeBinding
 
@@ -26,6 +27,9 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
+    private lateinit var navController: NavController
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -45,22 +49,28 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupNavigation()
-        onDestroyView()
+        navController = findNavController()
+        navigateToCamera()
+        navigateToImagePreview()
     }
 
-    private fun setupNavigation() {
+    private fun navigateToCamera() {
         binding.cameraBtn.setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_cameraFragment)
+            navController.navigate(R.id.action_homeFragment_to_cameraFragment)
         }
     }
+
+    private fun navigateToImagePreview() {
+        binding.imageBtn.setOnClickListener {
+            navController.navigate(R.id.action_homeFragment_to_imagePreviewFragment2)
+        }
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
-
-
 
     companion object {
         /**

@@ -13,10 +13,27 @@
         <action
             android:id="@+id/action_homeFragment_to_cameraFragment"
             app:destination="@id/cameraFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_imagePreviewFragment2"
+            app:destination="@id/imagePreviewFragment2" />
     </fragment>
     <fragment
         android:id="@+id/cameraFragment"
         android:name="com.nmm.objectdetectionapp.CameraFragment"
         android:label="fragment_camera"
-        tools:layout="@layout/fragment_camera" />
+        tools:layout="@layout/fragment_camera" >
+        <action
+            android:id="@+id/action_cameraFragment_to_imagePreviewFragment2"
+            app:destination="@id/imagePreviewFragment2" />
+    </fragment>
+    <fragment
+        android:id="@+id/imagePreviewFragment2"
+        android:name="com.nmm.objectdetectionapp.ImagePreviewFragment"
+        android:label="fragment_image_preview"
+        tools:layout="@layout/fragment_image_preview" >
+        <action
+            android:id="@+id/action_imagePreviewFragment2_to_cameraFragment"
+            app:destination="@id/cameraFragment" />
+
+    </fragment>
 </navigation>

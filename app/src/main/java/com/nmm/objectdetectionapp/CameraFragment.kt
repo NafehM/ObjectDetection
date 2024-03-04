@@ -11,6 +11,7 @@ package com.nmm.objectdetectionapp
 //import androidx.camera.video.QualitySelector
 //import androidx.camera.video.VideoRecordEvent
 //import androidx.core.content.PermissionChecker
+//import android.net.Uri
 import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
@@ -31,7 +32,10 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.navigation.NavController
+import androidx.navigation.fragment.findNavController
 import com.nmm.objectdetectionapp.databinding.FragmentCameraBinding
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
@@ -39,7 +43,6 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-// TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
@@ -61,6 +64,8 @@ class CameraFragment : Fragment() {
 
     private var _binding: FragmentCameraBinding? = null
     private val binding get() = _binding!!
+
+    private lateinit var navController: NavController
 
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
@@ -99,6 +104,7 @@ class CameraFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        navController = findNavController()
 
         //To check if permission granted, starts the camera
         if (allPermissionsGranted()) {
@@ -108,7 +114,10 @@ class CameraFragment : Fragment() {
             requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
         }
         // Set up the listeners for take photo and video capture buttons
-        binding.captureBtn.setOnClickListener { takePhoto() }
+        binding.captureBtn.setOnClickListener {
+            takePhoto()
+//            navigateToImagePreview()
+        }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
@@ -164,30 +173,21 @@ class CameraFragment : Fragment() {
      * logged.
      */
     private fun takePhoto() {
-        // Get a stable reference of the modifiable image capture use case
         val imageCapture = imageCapture ?: return
 
-        // Create time stamped name and MediaStore entry.
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
-            .format(System.currentTimeMillis())
+        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Object Detection-Images")
             }
         }
-        val activity = activity ?: return // Check if activity is available
-        val contentResolver = (activity as MainActivity).contentResolver//New
-        // Create output options object which contains file + metadata
-        val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues)
-            .build()
 
-        // Set up image capture listener, which is triggered
-        // after photo has been taken
+        val activity = activity ?: return
+        val contentResolver = activity.contentResolver
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues).build()
+
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(requireContext()),
@@ -196,19 +196,18 @@ class CameraFragment : Fragment() {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
                 }
 
-                override fun
-                        onImageSaved(output: ImageCapture.OutputFileResults){
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val msg = "Photo capture succeeded: ${output.savedUri}"
                     Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                     Log.d(TAG, msg)
+
+                    // Navigate with URI
+                    val bundle = bundleOf("imageUri" to output.savedUri.toString())
+                    navController.navigate(R.id.action_cameraFragment_to_imagePreviewFragment2, bundle)
                 }
             }
         )
     }
-
-//    private fun requestPermissions() {
-//        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
-//    }
 
     /**
      * Checks if all required permissions specified in the `REQUIRED_PERMISSIONS` array are granted.
@@ -243,7 +242,6 @@ class CameraFragment : Fragment() {
          * @param param2 Parameter 2.
          * @return A new instance of fragment CameraFragment.
          */
-        // TODO: Rename and change types and number of parameters
         @JvmStatic
         fun newInstance(param1: String, param2: String) =
             CameraFragment().apply {
