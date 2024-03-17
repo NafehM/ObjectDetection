@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/homeFrameLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFEB3B"
+    android:background="#DDFFEB3B"
     tools:context=".HomeFragment">
 
     <Button
         android:id="@+id/cameraBtn"
-        android:layout_width="116dp"
-        android:layout_height="49dp"
+        android:layout_width="200dp"
+        android:layout_height="50dp"
         android:layout_marginTop="533dp"
         android:layout_marginBottom="149dp"
         android:text="@string/camera"
+        android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
@@ -23,12 +23,13 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/imageBtn"
-        android:layout_width="116dp"
-        android:layout_height="49dp"
+        android:id="@+id/imagePreviewBtn"
+        android:layout_width="200dp"
+        android:layout_height="50dp"
         android:layout_marginTop="533dp"
         android:layout_marginBottom="50dp"
-        android:text="@string/image"
+        android:text="@string/image_preview"
+        android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"

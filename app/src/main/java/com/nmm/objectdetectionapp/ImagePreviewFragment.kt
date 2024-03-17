@@ -166,7 +166,7 @@ class ImagePreviewFragment : Fragment() {
      * back to the CameraFragment.
      */
     private fun navigateToCamera() {
-        binding.backButton.setOnClickListener {
+        binding.cameraBtn2.setOnClickListener {
             navController.navigate(R.id.action_imagePreviewFragment2_to_cameraFragment)
         }
     }

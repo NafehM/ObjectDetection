@@ -9,5 +9,7 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="camera">Camera</string>
     <string name="image">Image</string>
+    <string name="classified_as">Classified as:</string>
+    <string name="confidence">Confidences:</string>
 
 </resources>

@@ -61,7 +61,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun navigateToImagePreview() {
-        binding.imageBtn.setOnClickListener {
+        binding.imagePreviewBtn.setOnClickListener {
             navController.navigate(R.id.action_homeFragment_to_imagePreviewFragment2)
         }
     }
