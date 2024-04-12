@@ -1,20 +1,14 @@
 package com.nmm.objectdetectionapp
 
-//import androidx.core.app.ActivityCompat
-
-//import androidx.camera.video.Recorder
-//import androidx.camera.video.Recording
-//import androidx.camera.video.VideoCapture
-//import androidx.camera.video.FallbackStrategy
-//import androidx.camera.video.MediaStoreOutputOptions
-//import androidx.camera.video.Quality
-//import androidx.camera.video.QualitySelector
-//import androidx.camera.video.VideoRecordEvent
-//import androidx.core.content.PermissionChecker
-//import android.net.Uri
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -28,49 +22,49 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import com.nmm.objectdetectionapp.databinding.FragmentCameraBinding
-import java.nio.ByteBuffer
+import com.nmm.objectdetectionapp.viewmodel.SharedViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import com.nmm.objectdetectionapp.analysis.LuminosityAnalyzer
 
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-
-    /** Defines a typealias for a callback function that receives
-     * a luminance value (luma) as a Double and returns nothing (Unit).
-     */
-    typealias LumaListener = (luma: Double) -> Unit
 /**
- * A simple [Fragment] subclass.
- * Use the [CameraFragment.newInstance] factory method to
- * create an instance of this fragment.
+ * CameraFragment uses cameraX API to capture photos
+ * It handles camera permissions, displays camera preview,
+ * and captures images which are saved to external storage.
  */
 class CameraFragment : Fragment() {
 
-    private var param1: String? = null
-    private var param2: String? = null
-
+    // Binding object instance for accessing the fragment's views
     private var _binding: FragmentCameraBinding? = null
+
+    //Null safety is handled by a getter
     private val binding get() = _binding!!
 
+    // Navigation controller for navigating between fragments.
     private lateinit var navController: NavController
 
+    // SharedViewModel for sharing data between fragments
+    private lateinit var sharedViewModel: SharedViewModel
+
+    // CameraX image capture use-case for taking photos.
     private var imageCapture: ImageCapture? = null
+    // Executor service for running camera operations on a background thread.
     private lateinit var cameraExecutor: ExecutorService
 
-    //to define a contract for requesting permission using registerForActivityResult
+    /**
+     * Launcher for requesting camera and storage permissions.
+     * Starts the camera if permissions are granted, otherwise displays a toast and closes the activity.
+     */
     private val requestPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -88,8 +82,6 @@ class CameraFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
         }
     }
 
@@ -104,29 +96,29 @@ class CameraFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        sharedViewModel = ViewModelProvider(requireActivity()).get(SharedViewModel::class.java)
         navController = findNavController()
 
-        //To check if permission granted, starts the camera
+        //Check permissions and start the camera or request permissions
         if (allPermissionsGranted()) {
             startCamera()
         } else {
             //A call to launch the permission request
             requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
         }
-        // Set up the listeners for take photo and video capture buttons
+        // Set up the listeners for taking photo
         binding.captureBtn.setOnClickListener {
             takePhoto()
 //            navigateToImagePreview()
         }
-
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
     /**
-    * Initializes and starts the camera with the necessary configurations for preview,
-    * image capture, and image analysis.
-    * The function selects the back camera as the default
-    * @throws Exception if the use case binding fails, indicating an issue with camera initialization.
+     * Starts the camera and binds use cases.
+     * Initialises and the camera provider and configures the Preview, ImageCapture, and ImageAnalysis use cases.
+     * It selects the back camera as the default
+     * @throws Exception if the use case binding fails, indicating an issue with camera initialisation.
      */
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
@@ -134,7 +126,7 @@ class CameraFragment : Fragment() {
             // Used to bind the lifecycle of cameras to the lifecycle owner
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // Preview
+            // Setup camera use cases
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
             }
@@ -164,30 +156,42 @@ class CameraFragment : Fragment() {
     }
 
     /**
-     * Captures Captures a photo using the current camera configuration and saves it
+     * Takes a photo with the ImageCapture use case and saves it
      * to the device's external storage in the "Pictures/Object Detection-Images" directory.
      * It supports JPEG images
      *
-     * Upon successfully taking a photo, a toast message is displayed, and the URI of the saved
-     * image is logged. If an error occurs during the image capture process, an error message is
-     * logged.
+     * After capturing the photo, if successful, it corrects the image orientation (if needed),
+     * updates the SharedViewModel with the URI of the captured image, and navigates to the ImagePreviewFragment.
      */
     private fun takePhoto() {
+        // Ensure the Fragment is attached to an Activity
+        val activity = activity ?: return
+
+        // Ensure imageCapture is initialised
         val imageCapture = imageCapture ?: return
 
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
+        // Generate a file name based on the  UK's current time
+        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.UK).format(System.currentTimeMillis())
+
+        // Prepare content values for the saved image
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            // For Android Q and above, use relative path instead of absolute path
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Object Detection-Images")
             }
         }
 
-        val activity = activity ?: return
-        val contentResolver = activity.contentResolver
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues).build()
+        // Define output options for the captured image
+        // using the Activity's contentResolver
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+            activity.contentResolver, // Use the safely unwrapped Activity reference
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ).build()
 
+        // Execute capture and save image
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(requireContext()),
@@ -201,27 +205,76 @@ class CameraFragment : Fragment() {
                     Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                     Log.d(TAG, msg)
 
-                    // Navigate with URI
-                    val bundle = bundleOf("imageUri" to output.savedUri.toString())
-                    navController.navigate(R.id.action_cameraFragment_to_imagePreviewFragment2, bundle)
+                    // Corrects the image orientation and navigates to the preview
+                    output.savedUri?.let { uri ->
+                        correctImageOrientationAndSave(requireContext(), uri)
+
+                        // Update SharedViewModel with the Uri of the captured image
+                        sharedViewModel.setImageUri(uri)
+
+                        // After updating the SharedViewModel, navigate to ImagePreviewFragment
+                        navController.navigate(R.id.action_cameraFragment_to_imagePreviewFragment2)
+                    }
                 }
+
             }
         )
     }
+    /**
+     * Corrects the orientation of a captured image based on its EXIF orientation data.
+     * After determining the necessary rotation, it applies this rotation to the bitmap representation
+     * of the image and overwrites the original image file with the corrected bitmap.
+     *
+     * @param context The context used to access the ContentResolver for the image Uri.
+     * @param imageUri The Uri of the captured image that may need orientation correction.
+     */
+    @SuppressLint("Recycle")
+    private fun correctImageOrientationAndSave(context: Context, imageUri: Uri) {
+        // Obtain an input stream from the given image Uri to read the image's EXIF data
+        val inputStream = context.contentResolver.openInputStream(imageUri)
+
+        // Use ExifInterface to parse the image's EXIF data from the input stream
+        val exifInterface = ExifInterface(inputStream!!)
+
+        // Determine the rotation degrees from the EXIF orientation tag
+        // This indicates how much the image needs to be rotated to be displayed correctly
+        val rotationDegrees = when (exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0 // No rotation needed
+        }
+        // Check if the image needs to be rotated
+        if (rotationDegrees != 0) {
+
+            @Suppress("DEPRECATION")
+            // Convert the Uri to a Bitmap for manipulation
+            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
+
+            // Prepare a Matrix object to perform the rotation
+            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+
+            // Apply the rotation to the Bitmap
+            val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+
+            // obtain an output stream to write the rotated image back to its original Uri
+            val outStream = context.contentResolver.openOutputStream(imageUri)
+
+            // compress and write the rotated bitmap to the output stream, overwriting the original image
+            outStream?.let { rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, it) }
+            outStream?.close() // Ensure to close the output stream after writing
+        }
+    }
 
     /**
-     * Checks if all required permissions specified in the `REQUIRED_PERMISSIONS` array are granted.
-     *
-     * This function iterates through each permission in `REQUIRED_PERMISSIONS` and uses
-     * `ContextCompat.checkSelfPermission` to compare the current permission state against
-     * `PackageManager.PERMISSION_GRANTED`. It returns `true` if all permissions are granted,
-     * indicating the app has the necessary permissions to operate as expected. Otherwise,
-     * it returns `false`, signaling that at least one required permission is missing.
-     *
-     * @return Boolean indicating whether all required permissions are granted (`true`) or not (`false`).
+     * Checks if all required permissions have been granted.
+     * @return True if all permissions are granted, false otherwise.
      */
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+    private fun allPermissionsGranted() =
+        // Iterate through the list of required permissions
+        REQUIRED_PERMISSIONS.all {
+            // for each permission in the list, check if it has been granted
+            ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
     }
 
     /**
@@ -230,61 +283,25 @@ class CameraFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-        cameraExecutor.shutdown()//New
+        cameraExecutor.shutdown() //Shuts down the executor service
     }
 
     companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment CameraFragment.
-         */
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            CameraFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
-//        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = //New
+        //Array of required permissions needed for the camera and external storage access
+        private val REQUIRED_PERMISSIONS =
             mutableListOf (
                 Manifest.permission.CAMERA
 //                Manifest.permission.RECORD_AUDIO
             ).apply {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 }
             }.toTypedArray()
 
-        private const val TAG = "ObjectDetectionApp"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS" //New
-    }
+        private const val TAG = "ObjectDetectionApp" // Tag for debugging
 
-    private class LuminosityAnalyzer(private val listener: LumaListener) : ImageAnalysis.Analyzer {
-
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            rewind()    // Rewind the buffer to zero
-            val data = ByteArray(remaining())
-            get(data)   // Copy the buffer into a byte array
-            return data // Return the byte array
-        }
-
-        override fun analyze(image: ImageProxy) {
-
-            val buffer = image.planes[0].buffer
-            val data = buffer.toByteArray()
-            val pixels = data.map { it.toInt() and 0xFF }
-            val luma = pixels.average()
-
-            listener(luma)
-
-            image.close()
-        }
+        //the format for naming  image files. It uses a timestamp to ensure that each filename is unique
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
 }
 

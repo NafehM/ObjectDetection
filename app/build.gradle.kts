@@ -36,11 +36,15 @@ android {
 
     buildFeatures {
         viewBinding = true
+        mlModelBinding = true
     }
 
 }
 
 dependencies {
+    implementation("org.tensorflow:tensorflow-lite-metadata:0.1.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.test.ext:junit-ktx:1.1.5")
     val navVersion = "2.7.7" // creating a variable for navigation version
 
 
@@ -54,7 +58,7 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:$navVersion")
 
 
-    testImplementation("junit:junit:4.13.2")
+
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
@@ -75,5 +79,19 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-gpu:2.4.0")
     // TensorFlow Lite support library
     implementation("org.tensorflow:tensorflow-lite-support:0.1.0")
+
+
+    // Unit testing dependencies
+    testImplementation("junit:junit:4.13.2")
+    testImplementation ("org.mockito:mockito-core:3.+")
+    testImplementation ("androidx.arch.core:core-testing:2.1.0")
+    testImplementation ("org.mockito.kotlin:mockito-kotlin:4.0.0")
+
+    testImplementation ("org.mockito:mockito-inline:2.13.0") // For final class mocking
+
+// Required for LiveData testing
+    androidTestImplementation ("androidx.test.ext:junit:1.1.2")
+    androidTestImplementation ("androidx.test.espresso:espresso-core:3.3.0")
+
 
 }
