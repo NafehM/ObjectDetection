@@ -3,21 +3,14 @@ package com.nmm.objectdetectionapp
 import android.content.Context
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.lifecycle.MutableLiveData
 import androidx.test.core.app.ApplicationProvider
-import com.nmm.objectdetectionapp.model.MyModel
-import com.nmm.objectdetectionapp.viewmodel.SharedViewModel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.Mock
-import org.mockito.Mockito.`when`
 import org.mockito.junit.MockitoJUnitRunner
 import org.tensorflow.lite.Interpreter
-import java.nio.ByteBuffer
 
 @RunWith(MockitoJUnitRunner::class)
 class ImagePreviewFragmentTest {
